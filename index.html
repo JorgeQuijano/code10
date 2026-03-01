@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Power of 10: TypeScript Rules</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a24;
+      --bg-card: #16161f;
+      --text-primary: #e8e8ed;
+      --text-secondary: #9898a8;
+      --text-muted: #5c5c6e;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.3);
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: #2a2a38;
+      --code-bg: #0d0d14;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    header {
+      text-align: center;
+      padding: 3rem 0;
+      position: relative;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 200px;
+      background: var(--accent);
+      filter: blur(120px);
+      opacity: 0.15;
+      border-radius: 50%;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fff 0%, var(--accent-hover) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .intro {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .intro p {
+      color: var(--text-secondary);
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin: 2.5rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    h2 .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      background: var(--accent);
+      color: white;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .rule-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      transition: border-color 0.2s;
+    }
+
+    .rule-card:hover {
+      border-color: var(--accent);
+    }
+
+    .rule-card h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+
+    .tags {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tag-avoid {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+    }
+
+    .tag-prefer {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success);
+    }
+
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+
+    .code-block pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+
+    .code-block code {
+      color: var(--text-secondary);
+    }
+
+    .code-block .comment {
+      color: var(--text-muted);
+    }
+
+    .code-block .keyword {
+      color: #c792ea;
+    }
+
+    .code-block .string {
+      color: #c3e88d;
+    }
+
+    .code-block .function {
+      color: #82aaff;
+    }
+
+    .checklist {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem;
+      margin-top: 3rem;
+    }
+
+    .checklist h2 {
+      margin-top: 0;
+    }
+
+    .checklist-items {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-tertiary);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .checklist-item:hover {
+      background: var(--bg-secondary);
+    }
+
+    .checklist-item input[type="checkbox"] {
+      width: 1.25rem;
+      height: 1.25rem;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .checklist-item label {
+      cursor: pointer;
+      flex: 1;
+    }
+
+    footer {
+      text-align: center;
+      padding: 3rem 0;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      color: var(--accent-hover);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .container {
+        padding: 1rem;
+      }
+      
+      .rule-card {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Power of 10</h1>
+      <p class="subtitle">Safety-Critical Coding Rules for TypeScript</p>
+      <span class="badge">Adapted from NASA's JPL</span>
+    </header>
+
+    <section class="intro">
+      <p>The Power of 10 rules originated from NASA's Jet Propulsion Laboratory as guidelines for writing safety-critical code. This project adapts those proven principles for modern TypeScript development, helping you write more reliable, maintainable, and bug-free code.</p>
+    </section>
+
+    <section class="rules">
+      <h2><span class="num">1</span> Simple Control Flow</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid recursion, nested callbacks (3+ levels), and callback hell. Use for/while loops, Array methods, and async/await for cleaner, more predictable code flow.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// ❌ Avoid - nested callbacks</span>
+getData(<span class="keyword">function</span>(err, data) {
+  processData(data, <span class="keyword">function</span>(err2, result) {
+    saveResult(result, <span class="keyword">function</span>(err3) { });
+  });
+});
+
+<span class="comment">// ✅ Preferred - async/await</span>
+<span class="keyword">const</span> data = <span class="keyword">await</span> getData();
+<span class="keyword">const</span> result = <span class="keyword">await</span> processData(data);
+<span class="keyword">await</span> saveResult(result);</code></pre>
+        </div>
+      </div>
+
+      <h2><span class="num">2</span> Bounded Loops</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid while(true) with unclear termination. Use explicit bounds and max iterations to prevent infinite loops and make code behavior predictable.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// ❌ Avoid - unclear termination</span>
+<span class="keyword">while</span> (<span class="keyword">true</span>) {
+  <span class="keyword">const</span> item = queue.pop();
+  <span class="keyword">if</span> (!item) <span class="keyword">break</span>;
+  process(item);
+}
+
+<span class="comment">// ✅ Preferred - explicit bounds</span>
+<span class="keyword">const</span> MAX_ITEMS = <span class="string">1000</span>;
+<span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="string">0</span>; i &lt; Math.min(queue.length, MAX_ITEMS); i++) {
+  process(queue[i]);
+}</code></pre>
+        </div>
+      </div>
+
+      <h2><span class="num">3</span> No Dynamic Allocation in Hot Paths</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid creating new objects in loops and closures that capture large scope. Pre-allocate and reuse objects to reduce GC pressure and improve performance.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// ❌ Avoid - creating objects in loop</span>
+<span class="keyword">function</span> <span class="function">processItems</span>(items: <span class="keyword">string</span>[]) {
+  <span class="keyword">return</span> items.map(item =&gt; <span class="keyword">new</span> <span class="function">ProcessedItem</span>(item));
+}
+
+<span class="comment">// ✅ Preferred - reuse primitives</span>
+<span class="keyword">function</span> <span class="function">processItems</span>(items: <span class="keyword">string</span>[]): <span class="keyword">string</span>[] {
+  <span class="keyword">return</span> items.map(item =&gt; item.trim().toLowerCase());
+}</code></pre>
+        </div>
+      </div>
+
+      <h2><span class="num">4</span> Small Functions</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid functions over 40 lines with 3+ nesting levels. Prefer single responsibility and extract helper functions for better readability and testability.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// ❌ Avoid - large function with deep nesting</span>
+<span class="keyword">async function</span> <span class="function">handleUserRequest</span>(req: Request) {
+  <span class="keyword">if</span> (req.method === <span class="string">'GET'</span>) {
+    <span class="keyword">const</span> user = <span class="keyword">await</span> db.findUser(req.userId);
+    <span class="keyword">if</span> (user) {
+      <span class="keyword">if</span> (user.isActive) {
+        <span class="comment">// ... 50 more lines</span>
+      }
+    }
+  }
+}
+
+<span class="comment">// ✅ Preferred - small, focused functions</span>
+<span class="keyword">async function</span> <span class="function">handleUserRequest</span>(req: Request): Promise&lt;Response&gt; {
+  <span class="keyword">if</span> (!<span class="function">isGetRequest</span>(req)) <span class="keyword">return</span> <span class="function">badRequest</span>();
+  <span class="keyword">const</span> user = <span class="keyword">await</span> <span class="function">fetchUser</span>(req.userId);
+  <span class="keyword">if</span> (!user) <span class="keyword">return</span> <span class="function">notFound</span>();
+  <span class="keyword">return</span> <span class="function">ok</span>(<span class="keyword">await</span> <span class="function">serializeUser</span>(user));
+}</code></pre>
+        </div>
+      </div>
+
+      <h2><span class="num">5</span> Assertive Coding</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid missing null checks and assuming valid input. Use assert libraries, Zod, or similar for runtime validation of external input.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// ❌ Avoid - assume valid input</span>
+<span class="keyword">function</span> <span class="function">calculateShipping</span>(order: Order): <span class="keyword">number</span> {
+  <span class="keyword">return</span> order.items.<span class="function">reduce</span>((sum, item) =&gt; sum + item.price, <span class="string">0</span>);
+}
+
+<span class="comment">// ✅ Preferred - validate with Zod</span>
+<span class="keyword">import</span> { z } <span class="keyword">from</span> <span class="string">'zod'</span>;
+
+<span class="keyword">const</span> OrderSchema = z.object({
+  items: z.array(z.object({ price: z.number().positive() })).min(<span class="string">1</span>)
+});
+
+<span class="keyword">function</span> <span class="function">calculateShipping</span>(order: <span class="keyword">unknown</span>): <span class="keyword">number</span> {
+  <span class="keyword">const</span> validOrder = OrderSchema.<span class="function">parse</span>(order);
+  <span class="keyword">return</span> validOrder.items.<span class="function">reduce</span>((sum, item) =&gt; sum + item.price, <span class="string">0</span>);
+}</code></pre>
+        </div>
+      </div>
+
+      <h2><span class="num">6</span> Minimize Scope</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid global variables and unused class properties. Use const by default and declare variables at their point of use to reduce coupling.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// ❌ Avoid - global state</span>
+<span class="keyword">let</span> globalCounter = <span class="string">0</span>;
+<span class="keyword">class</span> Counter {
+  <span class="function">increment</span>() { globalCounter++; }
+}
+
+<span class="comment">// ✅ Preferred - local scope</span>
+<span class="keyword">function</span> <span class="function">createCounter</span>() {
+  <span class="keyword">let</span> counter = <span class="string">0</span>;
+  <span class="keyword">return</span> {
+    <span class="function">increment</span>: () =&gt; counter++
+  };
+}</code></pre>
+        </div>
+      </div>
+
+      <h2><span class="num">7</span> Validate All Inputs</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid the any type and ignoring strict mode. Enable strict: true in TypeScript and add runtime validation for external data.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// ❌ Avoid - any type</span>
+<span class="keyword">function</span> <span class="function">parseData</span>(data: <span class="keyword">any</span>): <span class="keyword">any</span> {
+  <span class="keyword">return</span> JSON.<span class="function">parse</span>(data);
+}
+
+<span class="comment">// ✅ Preferred - strict typing</span>
+<span class="keyword">interface</span> UserData {
+  id: <span class="keyword">string</span>;
+  name: <span class="keyword">string</span>;
+  email: <span class="keyword">string</span>;
+}
+
+<span class="keyword">function</span> <span class="function">parseData</span>(data: <span class="keyword">string</span>): UserData {
+  <span class="keyword">const</span> parsed = JSON.<span class="function">parse</span>(data) <span class="keyword">as</span> UserData;
+  <span class="keyword">if</span> (!parsed.id || !parsed.name || !parsed.email) {
+    <span class="keyword">throw new</span> <span class="function">Error</span>(<span class="string">'Invalid user data'</span>);
+  }
+  <span class="keyword">return</span> parsed;
+}</code></pre>
+        </div>
+      </div>
+
+      <h2><span class="num">8</span> Limit Metaprogramming</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid dynamic requires and complex conditionals. Prefer static imports and simple environment configuration for better tooling support.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// ❌ Avoid - dynamic requires</span>
+<span class="keyword">function</span> <span class="function">loadDriver</span>(name: <span class="keyword">string</span>) {
+  <span class="keyword">return</span> <span class="function">require</span>(<span class="string">\`./drivers/\${name}\`</span>);
+}
+
+<span class="comment">// ✅ Preferred - static imports</span>
+<span class="keyword">import</span> { PostgresDriver } <span class="keyword">from</span> <span class="string">'./drivers/postgres'</span>;
+<span class="keyword">import</span> { MySQLDriver } <span class="keyword">from</span> <span class="string">'./drivers/mysql'</span>;
+
+<span class="keyword">const</span> drivers = { postgres: PostgresDriver, mysql: MySQLDriver };
+<span class="keyword">function</span> <span class="function">getDriver</span>(type: <span class="string">'postgres'</span> | <span class="string">'mysql'</span>): Driver {
+  <span class="keyword">return new</span> <span class="function">drivers</span>[type]();
+}</code></pre>
+        </div>
+      </div>
+
+      <h2><span class="num">9</span> Restrict Object Mutation</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid deep nesting (a.b.c.d) and chained optional chaining. Prefer flat structures and immutable updates for predictable state changes.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// ❌ Avoid - deep nesting</span>
+<span class="keyword">const</span> user = <span class="function">getUser</span>();
+<span class="keyword">const</span> city = user?.profile?.address?.city?.<span class="function">toString</span>();
+
+<span class="comment">// ✅ Preferred - flat, explicit</span>
+<span class="keyword">interface</span> Address { city: <span class="keyword">string</span>; }
+<span class="keyword">interface</span> Profile { address: Address; }
+<span class="keyword">interface</span> User { profile: Profile; }
+
+<span class="keyword">function</span> <span class="function">getCity</span>(user: User | <span class="keyword">null</span>): <span class="keyword">string</span> {
+  <span class="keyword">if</span> (!user?.profile?.address) <span class="keyword">return</span> <span class="string">'Unknown'</span>;
+  <span class="keyword">return</span> user.profile.address.city;
+}
+
+<span class="comment">// Immutable updates</span>
+<span class="keyword">const</span> <span class="function">updateUser</span> = (user: User, name: <span class="keyword">string</span>): User =&gt; ({
+  ...user,
+  name,
+  profile: { ...user.profile }
+});</code></pre>
+        </div>
+      </div>
+
+      <h2><span class="num">10</span> Strict Compilation</h2>
+      <div class="rule-card">
+        <div class="tags">
+          <span class="tag tag-avoid">Avoid</span>
+          <span class="tag tag-prefer">Prefer</span>
+        </div>
+        <p>Avoid disabling strict mode or using @ts-ignore. Enable strict: true in tsconfig and ESLint with zero warnings for maximum type safety.</p>
+        <div class="code-block">
+          <pre><code><span class="comment">// tsconfig.json</span>
+{
+  <span class="string">"compilerOptions"</span>: {
+    <span class="string">"strict"</span>: <span class="keyword">true</span>,
+    <span class="string">"noImplicitAny"</span>: <span class="keyword">true</span>,
+    <span class="string">"strictNullChecks"</span>: <span class="keyword">true</span>,
+    <span class="string">"noUnusedLocals"</span>: <span class="keyword">true</span>,
+    <span class="string">"noUnusedParameters"</span>: <span class="keyword">true</span>
+  }
+}
+
+<span class="comment">// .eslintrc.yml</span>
+rules:
+  no-unused-vars: error
+  no-implicit-any: error</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="checklist">
+      <h2>📋 Implementation Checklist</h2>
+      <div class="checklist-items">
+        <div class="checklist-item">
+          <input type="checkbox" id="c1">
+          <label for="c1">Use async/await over callbacks</label>
+        </div>
+        <div class="checklist-item">
+          <input type="checkbox" id="c2">
+          <label for="c2">Always bound loops with explicit limits</label>
+        </div>
+        <div class="checklist-item">
+          <input type="checkbox" id="c3">
+          <label for="c3">Avoid object creation in hot paths</label>
+        </div>
+        <div class="checklist-item">
+          <input type="checkbox" id="c4">
+          <label for="c4">Keep functions under 40 lines</label>
+        </div>
+        <div class="checklist-item">
+          <input type="checkbox" id="c5">
+          <label for="c5">Validate all external input with Zod or similar</label>
+        </div>
+        <div class="checklist-item">
+          <input type="checkbox" id="c6">
+          <label for="c6">Use const and minimize scope</label>
+        </div>
+        <div class="checklist-item">
+          <input type="checkbox" id="c7">
+          <label for="c7">Avoid any type, enable strict mode</label>
+        </div>
+        <div class="checklist-item">
+          <input type="checkbox" id="c8">
+          <label for="c8">Prefer static imports over dynamic requires</label>
+        </div>
+        <div class="checklist-item">
+          <input type="checkbox" id="c9">
+          <label for="c9">Flatten object structures, use immutable updates</label>
+        </div>
+        <div class="checklist-item">
+          <input type="checkbox" id="c10">
+          <label for="c10">Enable strict TS config, zero warnings</label>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>Power of 10 for TypeScript — <a href="https://github.com/JorgeQuijano/code10">View on GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html>
