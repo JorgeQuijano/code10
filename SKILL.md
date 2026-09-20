@@ -1,277 +1,84 @@
 ---
 name: power-of-ten-typescript
-description: "The Power of 10 rules adapted for TypeScript: 10 rules for developing safety-critical TypeScript code. Use this skill when writing TypeScript code that requires high reliability, fewer bugs, and easier static analysis."
-user-invocable: true
+description: "Use when writing safety-critical TypeScript. Ten rules."
+version: 1.0.0
+author: Jorge Quijano (JorgeQuijano), Hermes Agent
+license: MIT
+platforms: [linux, macos, windows]
+metadata:
+  hermes:
+    tags: [TypeScript, Safety-Critical, Static-Analysis, Lint, Code-Review]
 ---
 
-# Power of 10: TypeScript Rules for Safety-Critical Code
+# Power of 10 for TypeScript
 
-The Power of 10 rules originated from NASA's Jet Propulsion Laboratory as guidelines for writing safety-critical code. This skill adapts those principles for TypeScript development.
+Ten constraints adapted from Gerard Holzmann's JPL "Power of 10" rules for safety-critical code. Each rule states the constraint, the reason, and the automated check that enforces it. The rules narrow what the compiler and linter are allowed to accept — they are not a style guide, and they do not replace type checking.
 
----
+## When to Use
 
-## Rule 1: Simple Control Flow
+- Writing or reviewing TypeScript where a defect is expensive: payments, auth, data pipelines, device control, anything long-running or unattended.
+- Asked to harden, audit, or make a module reliable.
+- **Don't use for:** prototypes, spikes, throwaway scripts, UI glue, or code about to be deleted. These rules cost lines and add friction; applying them to a spike is waste.
+- **Don't use as a rewrite mandate.** Apply to new or touched code and say so; retrofitting a whole codebase at once produces thousands of findings and no safer code (see Pitfalls).
 
-- **Avoid:** Recursion, nested callbacks (3+ levels), callback hell
-- **Preferred:** for/while loops, Array methods, async/await
+## Prerequisites
 
-```typescript
-// ❌ Avoid - nested callbacks
-getData((err, data) => {
-  processData(data, (err2, result) => {
-    saveResult(result, (err3) => { /* ... */ });
-  });
-});
+- Node ≥ 20.9, TypeScript ≥ 5.0, ESLint ≥ 9 (flat config), typescript-eslint ≥ 8.
+- Verified on Node 22.22, tsc 6.0.3, ESLint 10.11, typescript-eslint 8.70.
+- Copy-ready configs: `references/checks.md`. Corrected before/after code: `references/examples.md`.
 
-// ✅ Preferred - async/await
-const data = await getData();
-const result = await processData(data);
-await saveResult(result);
+## How to Run
+
+Both gates, every time, before declaring TypeScript work done:
+
+```
+npx tsc --noEmit                 # Rule 10
+npx eslint . --max-warnings 0    # Rules 1, 2, 4, 5, 6, 7, 8, 9, 10
 ```
 
----
+A non-zero exit from either gate means the work is not done. Never `eslint-disable` a Power-of-10 rule to get green — fix the code, or delete the finding with a written reason.
 
-## Rule 2: Bounded Loops
+## The Ten Rules
 
-- **Avoid:** while(true), unclear termination
-- **Preferred:** Explicit bounds, max iterations
+Each rule: constraint, why, and the check that enforces it. Examples in `references/examples.md`.
 
-```typescript
-// ❌ Avoid - unclear termination
-while (true) {
-  const item = queue.pop();
-  if (!item) break;
-  process(item);
-}
+**1. Simple control flow.** No recursion, direct or indirect — rewrite as a loop with an explicit work queue. No callbacks nested more than two deep; use `async`/`await`. Guard clauses over nested `if`s; max block depth 3. *Why:* recursion depth and callback tangles are where stack overflows and unreachable error paths hide. *Check:* `max-depth`, `max-nested-callbacks`; recursion is a review check — search the diff for a function that calls itself.
 
-// ✅ Preferred - explicit bounds
-const MAX_ITEMS = 1000;
-for (let i = 0; i < Math.min(queue.length, MAX_ITEMS); i++) {
-  process(queue[i]);
-}
-```
+**2. Bounded loops.** Every loop has a bound you can state in one sentence. No `while (true)`, no `for (;;)`, no exit that depends on an external party. Bound the data too: indexed access yields `T | undefined`. *Why:* an unbounded loop is a hang, and a hang in production is an outage. *Check:* `no-constant-condition` (`checkLoops: 'all'`); tsconfig `noUncheckedIndexedAccess`.
 
----
+**3. Bounded memory.** No unbounded accumulation: arrays or maps that grow with input volume, caches without an eviction limit, "collect everything then process" over a stream. Page or stream instead; in a *measured* hot path, reuse a fixed buffer. *Why:* this is the one JPL rule that cannot survive translation literally — JavaScript allocates constantly and the GC is optimised for short-lived objects, so the property worth enforcing is that growth is bounded, not that allocation is absent. *Check:* review — `.push(` or `new Map()` inside a loop over unbounded input, or a cache with no max size. Apply the buffer half only where a profile shows GC pressure, and name the profile.
 
-## Rule 3: No Dynamic Allocation in Hot Paths
+**4. Small functions.** ≤ 40 lines (JPL allows 60; 40 is the practical TypeScript ceiling), cyclomatic complexity ≤ 10, ≤ 4 parameters (options object beyond that), ≤ 300 lines per file. *Why:* reviewability — a function that fits on one screen can be reasoned about completely. *Check:* `max-lines-per-function`, `complexity`, `max-params`, `max-lines`.
 
-- **Avoid:** new objects in loops, closures capturing large scope
-- **Preferred:** Pre-allocate, reuse objects
+**5. Assertions, not assumptions.** Every value crossing a trust boundary (network, storage, config, user input, untyped dependency) is parsed by a schema — `zod`, `valibot`, or a hand-written narrowing function — and only the parsed result is used. `as`, `!`, and `@ts-ignore` are not validation: zero of them. *Why:* unvalidated input is the root of most incident classes, and a cast is the same assumption with worse error messages. *Check:* `consistent-type-assertions: never`, `no-non-null-assertion`, `no-explicit-any`, `ban-ts-comment`; "every boundary has a parse" is a review check.
 
-```typescript
-// ❌ Avoid - creating objects in loop
-function processItems(items: string[]) {
-  return items.map(item => new ProcessedItem(item));
-}
+**6. Smallest possible scope.** `const` by default, no `var`, declare at the point of use, no module-level mutable state. No shadowing, no unused variables or parameters (prefix deliberately-unused ones with `_`). *Why:* a value that cannot be reached cannot be corrupted, and unreachable state is state you cannot reason about. *Check:* `prefer-const`, `no-var`, `no-shadow`, `prefer-readonly`, `no-unused-vars`.
 
-// ✅ Preferred - reuse objects, use primitives
-function processItems(items: string[]): string[] {
-  return items.map(item => item.trim().toLowerCase());
-}
-```
+**7. Check every return value and parameter.** Await every promise, or discard it explicitly with `void` plus a comment saying why. Consume, log, or assert every non-void return. Handle every union member — exhaustive `switch`, no fallthrough. Compare explicitly (`value !== ''`, `list.length > 0`) instead of leaning on truthiness. *Why:* the ignored return value is the classic silent failure; this is the highest-yield rule in the set. *Check:* `no-floating-promises`, `no-misused-promises`, `require-await`, `switch-exhaustiveness-check`, `strict-boolean-expressions`; tsconfig `noFallthroughCasesInSwitch`.
 
----
+**8. No metaprogramming.** No `eval`, `new Function`, string-based timers, dynamic `require`, or string-keyed prototype manipulation. Static imports only. Configuration is data validated by a schema, not code that builds code. *Why:* a string the analyzer cannot resolve is a code path no tool can check. *Check:* `no-eval`, `no-new-func`, `no-implied-eval`, `no-require-imports`.
 
-## Rule 4: Small Functions
+**9. No mutation, shallow indirection.** Return new values instead of mutating parameters or shared objects (`{ ...user, name }`); mark fields and arrays `readonly`; accept `readonly T[]`. Keep property chains to ≤ 2 levels and at most one `?.` — flatten the type instead of chasing `a.b.c.d`, and treat a missing value as a branch you handle explicitly. *Why:* mutation is invisible at the call site, and a long chain is an unhandled absence waiting to throw. *Check:* `no-param-reassign` (`props: true`), `prefer-readonly`; mutation through method calls (`arr.push`, `map.set`) and chain depth are review checks.
 
-- **Avoid:** Functions > 40 lines, 3+ nesting levels
-- **Preferred:** Single responsibility, extract helpers
+**10. Strict compilation, zero warnings.** `strict` plus the hardening flags, `--max-warnings 0`, and no suppressions: `@ts-ignore` and `@ts-nocheck` are banned, `@ts-expect-error` only with a written reason on the same line. Widen deliberately (`| undefined`), never to `any`. *Why:* a warning is a defect you have agreed to keep. *Check:* both gates exit 0.
 
-```typescript
-// ❌ Avoid - large function with deep nesting
-async function handleUserRequest(req: Request) {
-  if (req.method === 'GET') {
-    const user = await db.findUser(req.userId);
-    if (user) {
-      if (user.isActive) {
-        // ... 50 more lines
-      }
-    }
-  }
-}
+## Pitfalls
 
-// ✅ Preferred - small, focused functions
-async function handleUserRequest(req: Request): Promise<Response> {
-  if (!isGetRequest(req)) return badRequest();
-  const user = await fetchUser(req.userId);
-  if (!user) return notFound();
-  return ok(await serializeUser(user));
-}
-```
+- **Rule 3 is a translation, not a transcription.** JPL bans allocation after init; JavaScript cannot honour that. Do not micro-optimise allocation — fix unbounded growth. Citing Rule 3 to justify pooling in a path nobody profiled adds bugs, not safety.
+- **Two rules are review-only.** Recursion (Rule 1) and mutation through method calls (Rule 9) have no reliable lint rule. The config does not prove them; the diff does. Do not claim the gates cover all ten.
+- **`as` is banned, `as const` is not.** Verified: `assertionStyle: 'never'` permits const assertions, so literal-union constants keep working. Reach for `satisfies` where you would have cast to widen a type.
+- **Do not turn all ten on at once on an existing codebase.** Order: (1) Rule 10 + `no-floating-promises` — the real bugs; (2) Rules 1, 4, 6 — mechanical, mostly autofixable; (3) Rules 5 and 9 — real edits at boundaries. Land each step separately.
+- **`--max-warnings 0` turns legacy warnings into a blocked pipeline.** Fix or delete the warning; suppressing it to unblock CI is the failure this rule exists to prevent.
+- **`index.html` in this repo restates the rule titles for the web page.** If a title changes here, change it there too, or the published page drifts from the skill.
 
----
+## Verification
 
-## Rule 5: Assertive Coding
-
-- **Avoid:** Missing null checks, assuming valid input
-- **Preferred:** assert/zod, validate external input
-
-```typescript
-// ❌ Avoid - assume valid input
-function calculateShipping(order: Order): number {
-  return order.items.reduce((sum, item) => sum + item.price, 0);
-}
-
-// ✅ Preferred - validate and assert
-import { z } from 'zod';
-
-const OrderSchema = z.object({
-  items: z.array(z.object({ price: z.number().positive() })).min(1)
-});
-
-function calculateShipping(order: unknown): number {
-  const validOrder = OrderSchema.parse(order);
-  return validOrder.items.reduce((sum, item) => sum + item.price, 0);
-}
-```
-
----
-
-## Rule 6: Minimize Scope
-
-- **Avoid:** Global variables, unused class properties
-- **Preferred:** const by default, declare at use point
-
-```typescript
-// ❌ Avoid - global state
-let globalCounter = 0;
-class Counter {
-  increment() { globalCounter++; }
-}
-
-// ✅ Preferred - local scope
-function createCounter() {
-  let counter = 0;
-  return {
-    increment: () => counter++
-  };
-}
-```
-
----
-
-## Rule 7: Validate All Inputs
-
-- **Avoid:** any type, ignoring strict mode
-- **Preferred:** strict: true, runtime validation
-
-```typescript
-// ❌ Avoid - any type
-function parseData(data: any): any {
-  return JSON.parse(data);
-}
-
-// ✅ Preferred - strict typing
-interface UserData {
-  id: string;
-  name: string;
-  email: string;
-}
-
-function parseData(data: string): UserData {
-  const parsed = JSON.parse(data) as UserData;
-  if (!parsed.id || !parsed.name || !parsed.email) {
-    throw new Error('Invalid user data');
-  }
-  return parsed;
-}
-```
-
----
-
-## Rule 8: Limit Metaprogramming
-
-- **Avoid:** Dynamic requires, complex conditionals
-- **Preferred:** Static imports, simple env config
-
-```typescript
-// ❌ Avoid - dynamic requires
-function loadDriver(name: string) {
-  return require(\`./drivers/\${name}\`);
-}
-
-// ✅ Preferred - static imports
-import { PostgresDriver } from './drivers/postgres';
-import { MySQLDriver } from './drivers/mysql';
-
-const drivers = { postgres: PostgresDriver, mysql: MySQLDriver };
-function getDriver(type: 'postgres' | 'mysql'): Driver {
-  return new drivers[type]();
-}
-```
-
----
-
-## Rule 9: Restrict Object Mutation
-
-- **Avoid:** Deep nesting (a.b.c.d), chained optional
-- **Preferred:** Flat structures, immutable updates
-
-```typescript
-// ❌ Avoid - deep nesting
-const user = getUser();
-const city = user?.profile?.address?.city?.toString();
-
-// ✅ Preferred - flat, explicit
-interface Address { city: string; }
-interface Profile { address: Address; }
-interface User { profile: Profile; }
-
-function getCity(user: User | null): string {
-  if (!user?.profile?.address) return 'Unknown';
-  return user.profile.address.city;
-}
-
-// Immutable updates
-const updateUser = (user: User, name: string): User => ({
-  ...user,
-  name,
-  profile: {
-    ...user.profile,
-    address: user.profile.address // reference unchanged
-  }
-});
-```
-
----
-
-## Rule 10: Strict Compilation
-
-- **Avoid:** Disabling strict mode, @ts-ignore
-- **Preferred:** strict: true, ESLint, zero warnings
-
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true
-  }
-}
-```
-
-```yaml
-# .eslintrc.yml
-rules:
-  no-unused-vars: error
-  no-implicit-any: error
-  @typescript-eslint/strict-boolean-expressions: error
-```
-
----
-
-## Summary Checklist
-
-- [ ] Use async/await over callbacks
-- [ ] Always bound loops with explicit limits
-- [ ] Avoid object creation in hot paths
-- [ ] Keep functions under 40 lines
-- [ ] Validate all external input with Zod or similar
-- [ ] Use const and minimize scope
-- [ ] Avoid \`any\` type, enable strict mode
-- [ ] Prefer static imports over dynamic requires
-- [ ] Flatten object structures, use immutable updates
-- [ ] Enable strict TS config, zero warnings
+- [ ] `npx tsc --noEmit` exits 0
+- [ ] `npx eslint . --max-warnings 0` exits 0 with zero warnings
+- [ ] No `as T`, `!`, `@ts-ignore`, or `eslint-disable` added in the diff
+- [ ] Every trust boundary parses its input with a schema before use
+- [ ] Every loop's bound is statable in one sentence; no unbounded accumulation added
+- [ ] No function over 40 lines, complexity over 10, or file over 300 lines added
+- [ ] No new module-level mutable state
+- [ ] Every promise awaited or `void`ed with a reason; every union handled exhaustively
+- [ ] No recursion added (grep the diff for self-calls)
